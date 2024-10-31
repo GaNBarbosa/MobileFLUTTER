@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import 'package:testepaginas/bookdetailpage.dart';
 import 'dart:convert';
 import 'package:testepaginas/class/book.dart';
 import 'package:testepaginas/repository/bookRepository.dart';
@@ -20,14 +21,14 @@ class _AcervoState extends State<Acervo> {
 
   Future<void> carregaLivros() async {
     try {
-      // Atualize o URL conforme necessário (ex: '10.0.2.2' para emulador Android)
-      var url = Uri.parse("http://10.0.2.2:8080/Book/todos");
+      var url = Uri.parse("http://localhost:8080/Book/todos");
       http.Response response = await http.get(url);
       if (response.statusCode == 200) {
-        List booklist = jsonDecode(response.body) as List;
+        String responseData = utf8.decode(response.bodyBytes);
+        List booklist = jsonDecode(responseData) as List;
         bookRepository.listaBook = booklist.map((book) => Book.fromJson(book)).toList();
         livrosExibidos = bookRepository.listaBook;
-        print("Livros carregados com sucesso: ${livrosExibidos.length}");
+        print("Livros carregados: ${livrosExibidos.length}");
       } else {
         print("Erro ao carregar livros: Código ${response.statusCode}");
         throw Exception('Falha ao carregar livros');
@@ -77,49 +78,67 @@ class _AcervoState extends State<Acervo> {
               ),
             ),
             const SizedBox(height: 20),
-            FutureBuilder<void>(
-              future: livrosCarregados,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(child: CircularProgressIndicator());
-                } else if (snapshot.hasError) {
-                  return Center(child: Text("Erro ao carregar livros"));
-                } else if (livrosExibidos.isEmpty) {
-                  return Center(child: Text("Nenhum livro disponível."));
-                } else {
-                  return GridView.builder(
-                    physics: const NeverScrollableScrollPhysics(),
-                    shrinkWrap: true,
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2, // Dois livros por linha
-                      mainAxisSpacing: 10,
-                      crossAxisSpacing: 10,
-                      childAspectRatio: 0.7, // Ajuste para exibir imagens e textos bem alinhados
-                    ),
-                    itemCount: livrosExibidos.length,
-                    itemBuilder: (context, index) {
-                      final livro = livrosExibidos[index];
-                      return Column(
-                        children: [
-                          Image.network(livro.cover, width: 100, height: 150, fit: BoxFit.cover),
-                          const SizedBox(height: 10),
-                          Text(
-                            livro.title,
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                            textAlign: TextAlign.center,
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: FutureBuilder<void>(
+                future: livrosCarregados,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  } else if (snapshot.hasError) {
+                    return const Center(child: Text("Erro ao carregar livros"));
+                  } else if (livrosExibidos.isEmpty) {
+                    return const Center(child: Text("Nenhum livro disponível."));
+                  } else {
+                    return GridView.builder(
+                      physics: const NeverScrollableScrollPhysics(),
+                      shrinkWrap: true,
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        mainAxisSpacing: 10,
+                        crossAxisSpacing: 10,
+                        childAspectRatio: 0.7,
+                      ),
+                      itemCount: livrosExibidos.length,
+                      itemBuilder: (context, index) {
+                        final livro = livrosExibidos[index];
+                        return GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => BookDetailPage(book: livro),
+                              ),
+                            );
+                          },
+                          child: Column(
+                            children: [
+                              Image.asset(
+                                'assets/images/covers/${livro.cover}',
+                                width: 100,
+                                height: 150,
+                                fit: BoxFit.cover,
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                livro.title,
+                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 5),
+                              Text(
+                                livro.author,
+                                style: const TextStyle(fontSize: 14),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 5),
-                          Text(
-                            livro.author,
-                            style: const TextStyle(fontSize: 14),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      );
-                    },
-                  );
-                }
-              },
+                        );
+                      },
+                    );
+                  }
+                },
+              ),
             ),
           ],
         ),
